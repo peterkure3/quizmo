@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'screens/home_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'main_scaffold.dart';
+import 'screens/onboarding_screen.dart';
+import 'screens/quiz_screen.dart';
 import 'services/theme_service.dart';
 import 'providers/theme_provider.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(
     MultiProvider(
       providers: [
@@ -14,9 +18,14 @@ void main() {
           update: (context, themeService, previous) => ThemeProvider(themeService),
         ),
       ],
-      child: const QuizmoApp(),
+      child: QuizmoApp(),
     ),
   );
+}
+
+Future<bool> _isOnboardingComplete() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getBool('onboarding_complete') ?? false;
 }
 
 class QuizmoApp extends StatelessWidget {
@@ -38,7 +47,45 @@ class QuizmoApp extends StatelessWidget {
         brightness: Brightness.dark,
       ),
       themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: const HomeScreen(),
+      home: FutureBuilder<bool>(
+        future: _isOnboardingComplete(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const SizedBox.shrink();
+          }
+          final onboardingComplete = snapshot.data!;
+          return onboardingComplete
+              ? const MainScaffold()
+              : OnboardingScreen(
+                  onFinish: () async {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool('onboarding_complete', true);
+                    if (context.mounted) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (_) => const MainScaffold(),
+                        ),
+                      );
+                    }
+                  },
+                );
+        },
+      ),
+      routes: {
+        '/home': (context) => const MainScaffold(initialIndex: 0),
+        '/categories': (context) => const MainScaffold(initialIndex: 1),
+        '/profile': (context) => const MainScaffold(initialIndex: 2),
+        '/settings': (context) => const MainScaffold(initialIndex: 3),
+        '/quiz': (context) => const QuizScreen(),
+      },
+      onUnknownRoute: (settings) {
+        return MaterialPageRoute(
+          builder: (context) => Scaffold(
+            appBar: AppBar(title: const Text('Page Not Found')),
+            body: const Center(child: Text('Page Not Found')),
+          ),
+        );
+      },
     );
   }
 }
