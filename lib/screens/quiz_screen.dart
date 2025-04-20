@@ -115,23 +115,49 @@ class _QuizFlowWidgetState extends State<QuizFlowWidget> {
     }
     final question = widget.questions[currentQuestion];
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(16.0),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Question ${currentQuestion + 1} of ${widget.questions.length}',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-            textAlign: TextAlign.center,
+          // Progress bar
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12.0),
+            child: LinearProgressIndicator(
+              value: (currentQuestion + 1) / widget.questions.length,
+              minHeight: 8,
+              backgroundColor: Colors.grey[300],
+              color: Colors.deepPurple,
+              borderRadius: BorderRadius.circular(4),
+            ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            question.question,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Question ${currentQuestion + 1} of ${widget.questions.length}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              Text(
+                'Score: $score',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+            ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 18),
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Text(
+                question.question,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+          const SizedBox(height: 28),
           ...List.generate(question.options.length, (idx) {
             final isSelected = selectedIndex == idx;
             final isCorrect = question.correctIndex == idx;
@@ -143,39 +169,55 @@ class _QuizFlowWidgetState extends State<QuizFlowWidget> {
                 color = Colors.red;
               }
             }
-            return Container(
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: color,
+            return AnimatedOpacity(
+              opacity: answered ? (isSelected || isCorrect ? 1.0 : 0.5) : 1.0,
+              duration: const Duration(milliseconds: 350),
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 7),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: color,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    textStyle: const TextStyle(fontSize: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: answered ? null : () => selectAnswer(idx),
+                  child: Text(question.options[idx]),
                 ),
-                onPressed: answered ? null : () => selectAnswer(idx),
-                child: Text(question.options[idx]),
               ),
             );
           }),
-          const SizedBox(height: 24),
-          if (answered)
-            Text(
-              selectedIndex == question.correctIndex
-                  ? 'Correct!'
-                  : 'Incorrect. The answer is: ${question.options[question.correctIndex]}',
-              style: TextStyle(
-                fontSize: 18,
-                color: selectedIndex == question.correctIndex
-                    ? Colors.green
-                    : Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          if (answered)
-            const SizedBox(height: 16),
-          if (answered)
-            ElevatedButton(
-              onPressed: nextQuestion,
-              child: Text(currentQuestion < widget.questions.length - 1 ? 'Next Question' : 'Finish'),
-            ),
+          const SizedBox(height: 28),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 350),
+            child: answered
+                ? Column(
+                    key: ValueKey(selectedIndex),
+                    children: [
+                      Text(
+                        selectedIndex == question.correctIndex
+                            ? 'Correct!'
+                            : 'Incorrect. The answer is: ${question.options[question.correctIndex]}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: selectedIndex == question.correctIndex
+                              ? Colors.green
+                              : Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: nextQuestion,
+                        child: Text(currentQuestion < widget.questions.length - 1 ? 'Next Question' : 'Finish'),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
         ],
       ),
     );
