@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'home_screen.dart';
 import '../models/quiz_question.dart';
 
 class QuizScreen extends StatelessWidget {
@@ -6,35 +8,78 @@ class QuizScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<QuizQuestion> questions = [
+    final String? category = ModalRoute.of(context)?.settings.arguments as String?;
+    final List<QuizQuestion> allQuestions = [
       QuizQuestion(
         question: 'What is the capital of France?',
         options: ['Berlin', 'London', 'Paris', 'Rome'],
         correctIndex: 2,
+        category: 'Geography',
       ),
       QuizQuestion(
         question: 'Which planet is known as the Red Planet?',
         options: ['Earth', 'Mars', 'Jupiter', 'Venus'],
         correctIndex: 1,
+        category: 'Science',
       ),
       QuizQuestion(
         question: 'Who wrote "Hamlet"?',
         options: ['Charles Dickens', 'Mark Twain', 'William Shakespeare', 'Jane Austen'],
         correctIndex: 2,
+        category: 'History',
+      ),
+      QuizQuestion(
+        question: 'What is H2O commonly known as?',
+        options: ['Salt', 'Water', 'Oxygen', 'Hydrogen'],
+        correctIndex: 1,
+        category: 'Science',
+      ),
+      QuizQuestion(
+        question: 'Which year did World War II end?',
+        options: ['1945', '1939', '1918', '1965'],
+        correctIndex: 0,
+        category: 'History',
+      ),
+      QuizQuestion(
+        question: 'Which company developed the PlayStation?',
+        options: ['Microsoft', 'Sony', 'Nintendo', 'Sega'],
+        correctIndex: 1,
+        category: 'Games',
       ),
     ];
+    final List<QuizQuestion> questions = category == null
+        ? allQuestions
+        : allQuestions.where((q) => q.category?.toLowerCase() == category.toLowerCase()).toList();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quiz'),
+        title: Text(category == null ? 'Quiz' : '$category Quiz'),
       ),
-      body: QuizFlowWidget(questions: questions),
+      body: Column(
+        children: [
+          if (category != null)
+            Container(
+              width: double.infinity,
+              color: Colors.deepPurple[50],
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: Text(
+                  '$category Quiz',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.deepPurple),
+                ),
+              ),
+            ),
+          Expanded(child: QuizFlowWidget(questions: questions, category: category)),
+        ],
+      ),
     );
   }
 }
 
+
 class QuizFlowWidget extends StatefulWidget {
   final List<QuizQuestion> questions;
-  const QuizFlowWidget({Key? key, required this.questions}) : super(key: key);
+  final String? category;
+  const QuizFlowWidget({Key? key, required this.questions, this.category}) : super(key: key);
 
   @override
   State<QuizFlowWidget> createState() => _QuizFlowWidgetState();
@@ -86,6 +131,15 @@ class _QuizFlowWidgetState extends State<QuizFlowWidget> {
   @override
   Widget build(BuildContext context) {
     if (finished) {
+      // Update stats after quiz completion
+      Future.microtask(() async {
+        final prefs = await SharedPreferences.getInstance();
+        int quizzes = (prefs.getInt('quizzes') ?? 0) + 1;
+        int highScore = prefs.getInt('high_score') ?? 0;
+        int streak = (prefs.getInt('streak') ?? 0) + 1;
+        if (score > highScore) highScore = score;
+        await HomeScreen.updateStats(quizzes: quizzes, highScore: highScore, streak: streak);
+      });
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
